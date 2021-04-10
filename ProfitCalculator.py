@@ -1,75 +1,20 @@
-import requests
 from datetime import datetime
 import pandas as pd
 from requests.api import request
-import matplotlib.pyplot as plt
 import os
 import time
-
-
-
-
-
-
-
-
-def download_data(symbol,datetime_interval,limit):
-
-    supported_intervals = {'minute','hour','day'}
-
-    assert datetime_interval in supported_intervals,\
-        'datetime_interval should be one of %s' % supported_intervals
-
-    to_symbol = "USD"
-    
-    try:
-        base_url = "https://min-api.cryptocompare.com/data/histo"
-        url = '%s%s' %(base_url,datetime_interval)
-        params = {'fsym':symbol,'tsym':to_symbol,
-                    'limit':limit,'aggregate':1}
-            
-        request = requests.get(url=url,params=params)
-        data = request.json()
-        print(f'[INFO] We got the data')
-        return data
-
-    except:
-        print(f"[INFO] There is a problem with the process")
-
-def convert_df(data):
-
-    df = pd.json_normalize(data,['Data'])
-    df['datetime'] = pd.to_datetime(df.time,unit="s")
-    df = df[['datetime','low','high']]
-    return df
-
-def save_data(symbol,datetime_interval,limit):
-
-    data = download_data(symbol=symbol,datetime_interval=datetime_interval,limit=limit)
-
-    if data is not None:
-
-        if not os.path.exists(f"{symbol}_{datetime_interval}.csv"):
-
-            df = convert_df(data)
-            df.to_csv((f"{symbol}_{datetime_interval}.csv"),index=False)
-            print("[INFO] The data is saved")
-
-    else:
-        print("[INFO] No data found")
-
-symbol = input("Symbol:")
-save_data(symbol=symbol,datetime_interval="hour",limit=2000)
-#save_data(symbol,datetime_interval="day",limit=82)
+from getCsvFiles import *
 
 
 
 def daily_profit_calculator(symbol):
 
+    #Checking the pdf's existance
+    #If it's not exits trying to download
     while True:
         try:
             df = pd.read_csv(f"{symbol}_hour.csv")
-            print("[INFO] The file has read")
+            #print("[INFO] The file has read")
             break
         except:
             print("[INFO] Can't find the csv file")
@@ -81,7 +26,8 @@ def daily_profit_calculator(symbol):
                 print("[INFO] There is something wrong with it")
                 break
 
-    
+
+
     df = df.iloc[13:]
     di_df = df.set_index(pd.DatetimeIndex(df['datetime'].values))
     di_df = di_df.drop(['datetime'],axis=1)
@@ -124,9 +70,14 @@ def daily_profit_calculator(symbol):
         count += 24
 
 
+    if not os.path.exists(f"{symbol}_day.csv"):
 
-    daily_csv = save_data(symbol=symbol,datetime_interval="day",limit=num_day)
-    daily_df = pd.read_csv(daily_csv)
+        daily_csv = save_data(symbol=symbol,datetime_interval="day",limit=num_day)
+        daily_df = pd.read_csv(f"{symbol}_day.csv")
+
+    else:
+        daily_df = pd.read_csv(f"{symbol}_day.csv") 
+
 
     index = len(daily_df) - 1
 
@@ -134,16 +85,47 @@ def daily_profit_calculator(symbol):
     daily_df.drop(['low'],axis=1,inplace=True)
     daily_df.drop(['high'],axis=1,inplace=True)
     daily_df['Percentage'] = profits
-
     print(daily_df)
+    return daily_df
 
 
 
 
+def weekly_profit_calculator(df):
+    
+    percentages = []
+    num_of_week = len(df)//7
+    
+    moneyL = []
+    count = 0
+    money = 1
+    for week in range(num_of_week):
+        dummy_money = 1
+        for i in range(7):
 
-
-
-
-
-
+            percentage = float(df['Percentage'][i+count])
+            dummy_money = dummy_money + dummy_money * percentage/100
         
+        
+        weekly_percentage = (dummy_money*100)-100
+        money = money + money*weekly_percentage/100
+        percentages.append(weekly_percentage)
+        moneyL.append(money)
+
+        count +=7
+
+
+    #print(moneyL)
+    #print(percentages)
+    return moneyL,percentages
+
+
+symbol = input("Symbol:").upper()
+save_data(symbol=symbol,datetime_interval="hour",limit=2000)
+daily_df=daily_profit_calculator(symbol=symbol)
+moneyL,percentages = weekly_profit_calculator(df=daily_df)
+data = {"Percentages":percentages,"Money($)":moneyL}
+weekly_df = pd.DataFrame(data,index=[f"{x}th week" for x in range(1,len(daily_df)//7+1)])
+print(weekly_df)
+
+
