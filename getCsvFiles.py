@@ -5,6 +5,9 @@ import os
 
 
 
+
+
+
 def download_data(symbol,datetime_interval,limit):
 
     supported_intervals = {'minute','hour','day'}
@@ -49,5 +52,8 @@ def save_data(symbol,datetime_interval,limit):
 
     else:
         print("[INFO] No data found")
+
+    
+
 
     
