@@ -5,9 +5,6 @@ import os
 
 
 
-
-
-
 def download_data(symbol,datetime_interval,limit):
 
     supported_intervals = {'minute','hour','day'}
@@ -31,12 +28,16 @@ def download_data(symbol,datetime_interval,limit):
     except:
         print(f"[INFO] There is a problem with the process")
 
+
+
 def convert_df(data):
 
     df = pd.json_normalize(data,['Data'])
     df['datetime'] = pd.to_datetime(df.time,unit="s")
     df = df[['datetime','low','high']]
     return df
+
+
 
 def save_data(symbol,datetime_interval,limit):
 
